@@ -47,3 +47,9 @@ pub async fn get_depth(orderbook: Data<Arc<Mutex<Orderbook>>>) -> impl Responder
     
     HttpResponse::Ok().json(depth)
 }
+
+#[get("/orders")]
+pub async fn get_orders(orderbook: Data<Arc<Mutex<Orderbook>>>) -> impl Responder {
+    let orderbook_guard = orderbook.lock().unwrap();
+    HttpResponse::Ok().json(&*orderbook_guard)
+}

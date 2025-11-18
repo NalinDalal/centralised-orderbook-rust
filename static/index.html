@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Centralised Orderbook</title>
+    <style>
+      :root {
+        --bg: #0f1724;
+        --card: #0b1220;
+        --muted: #93a3b8;
+        --accent: #06b6d4;
+        --accent-2: #7c3aed;
+        --radius: 10px;
+        --gap: 16px;
+        --maxw: 1100px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          Inter,
+          system-ui,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial;
+        background: linear-gradient(180deg, #071029 0%, #061223 100%);
+        color: #e6eef6;
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 28px;
+      }
+      .wrap {
+        width: 100%;
+        max-width: var(--maxw);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      p.lead {
+        color: var(--muted);
+        margin: 4px 0 0;
+        font-size: 13px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: var(--gap);
+      }
+      .card {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.02),
+          rgba(255, 255, 255, 0.01)
+        );
+        padding: 18px;
+        border-radius: var(--radius);
+        box-shadow: 0 6px 20px rgba(2, 6, 23, 0.6);
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: transparent;
+        color: inherit;
+        margin-top: 6px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+      button {
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        color: #07172a;
+        border: none;
+        padding: 10px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 12px;
+        font-weight: 600;
+      }
+      button.ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .depth-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      .depth-table th {
+        font-weight: 600;
+        text-align: left;
+        font-size: 13px;
+        color: var(--muted);
+        padding: 8px;
+      }
+      .depth-table td {
+        padding: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.03);
+      }
+      .bids td {
+        color: #a7f3d0;
+      }
+      .asks td {
+        color: #fecaca;
+      }
+
+      .log {
+        max-height: 220px;
+        overflow: auto;
+        margin-top: 8px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 8px;
+        border-radius: 8px;
+      }
+      .log-item {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 6px 0;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.02);
+      }
+
+      @media (max-width: 880px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .wrap {
+          padding: 0 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Centralised Orderbook</h1>
+          <p class="lead">
+            A tiny demo UI — create/cancel orders and view depth (server:
+            <code>127.0.0.1:8080</code>).
+          </p>
+        </div>
+        <div class="muted">Live demo · refreshes depth every 5s</div>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <h3 style="margin: 0 0 8px 0">Place Order</h3>
+          <label
+            >Price
+            <input id="price" type="number" value="100" />
+          </label>
+          <label
+            >Quantity
+            <input id="quantity" type="number" value="10" />
+          </label>
+          <label
+            >User ID
+            <input id="user_id" type="text" value="user1" />
+          </label>
+          <label
+            >Side
+            <select id="side">
+              <option value="Buy">Buy</option>
+              <option value="Sell">Sell</option>
+            </select>
+          </label>
+          <div class="row">
+            <button id="createBtn">Create Order</button>
+            <button id="depthBtn" class="ghost">Refresh Depth</button>
+          </div>
+          <div id="createResp" class="muted" style="margin-top: 10px"></div>
+
+          <hr
+            style="
+              border: none;
+              border-top: 1px solid rgba(255, 255, 255, 0.03);
+              margin: 14px 0;
+            "
+          />
+
+          <h3 style="margin: 0 0 8px 0">Cancel Order</h3>
+          <label
+            >Order ID
+            <input id="cancel_id" type="text" value="0" />
+          </label>
+          <div class="row">
+            <button id="cancelBtn">Cancel</button>
+          </div>
+          <div id="cancelResp" class="muted" style="margin-top: 10px"></div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom: var(--gap)">
+            <h3 style="margin: 0 0 8px 0">Order Book Depth</h3>
+            <table class="depth-table" id="depthTable">
+              <thead>
+                <tr>
+                  <th>Side</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody id="depthBody">
+                <tr>
+                  <td colspan="3" class="muted">
+                    No data yet — click "Refresh Depth"
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top: 12px">
+              <button id="viewOrdersBtn" class="ghost">
+                View Per-Price Orders
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="card"
+            id="ordersCard"
+            style="display: none; margin-bottom: var(--gap)"
+          >
+            <h3 style="margin: 0 0 8px 0">Orders (per price level)</h3>
+            <table class="depth-table" id="ordersTable">
+              <thead>
+                <tr>
+                  <th>Price</th>
+                  <th>Side</th>
+                  <th>Order ID</th>
+                  <th>User</th>
+                  <th>Qty</th>
+                  <th>Filled</th>
+                </tr>
+              </thead>
+              <tbody id="ordersBody">
+                <tr>
+                  <td colspan="6" class="muted">No orders yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3 style="margin: 0 0 8px 0">Activity Log</h3>
+            <div class="log" id="log"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const el = (id) => document.getElementById(id);
+      const log = (msg) => {
+        const container = el("log");
+        const item = document.createElement("div");
+        item.className = "log-item";
+        item.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        container.prepend(item);
+      };
+
+      async function createOrder() {
+        try {
+          const body = {
+            price: Number(el("price").value),
+            quantity: Number(el("quantity").value),
+            user_id: el("user_id").value,
+            side: el("side").value,
+          };
+          const res = await fetch("/order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const json = await res.json();
+          el("createResp").textContent =
+            `Order created: ${JSON.stringify(json)}`;
+          log(`Create → ${JSON.stringify(json)}`);
+          fetchDepth();
+        } catch (e) {
+          el("createResp").textContent = "Error";
+          log("Create error: " + e.message);
+        }
+      }
+
+      async function cancelOrder() {
+        try {
+          const body = { order_id: el("cancel_id").value };
+          const res = await fetch("/cancel", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const json = await res.json();
+          el("cancelResp").textContent =
+            `Cancel result: ${JSON.stringify(json)}`;
+          log(`Cancel → ${JSON.stringify(json)}`);
+          fetchDepth();
+        } catch (e) {
+          el("cancelResp").textContent = "Error";
+          log("Cancel error: " + e.message);
+        }
+      }
+
+      async function fetchDepth() {
+        try {
+          const res = await fetch("/depth");
+          const json = await res.json();
+          const tbody = el("depthBody");
+          tbody.innerHTML = "";
+          // show bids first (desc), then asks (asc)
+          if (json.bids && json.bids.length) {
+            json.bids
+              .sort((a, b) => b[0] - a[0])
+              .forEach((d) => {
+                const tr = document.createElement("tr");
+                tr.className = "bids";
+                tr.innerHTML = `<td>Bid</td><td>${d[0]}</td><td>${d[1]}</td>`;
+                tbody.appendChild(tr);
+              });
+          }
+          if (json.asks && json.asks.length) {
+            json.asks
+              .sort((a, b) => a[0] - b[0])
+              .forEach((d) => {
+                const tr = document.createElement("tr");
+                tr.className = "asks";
+                tr.innerHTML = `<td>Ask</td><td>${d[0]}</td><td>${d[1]}</td>`;
+                tbody.appendChild(tr);
+              });
+          }
+          if (
+            (!json.bids || json.bids.length === 0) &&
+            (!json.asks || json.asks.length === 0)
+          ) {
+            tbody.innerHTML =
+              '<tr><td colspan="3" class="muted">No depth data</td></tr>';
+          }
+        } catch (e) {
+          log("Depth fetch error: " + e.message);
+        }
+      }
+
+      el("createBtn").addEventListener("click", createOrder);
+      el("cancelBtn").addEventListener("click", cancelOrder);
+      el("depthBtn").addEventListener("click", fetchDepth);
+      el("viewOrdersBtn").addEventListener("click", fetchOrders);
+
+      // auto-refresh
+      fetchDepth();
+      setInterval(fetchDepth, 5000);
+
+      async function fetchOrders() {
+        try {
+          const res = await fetch("/orders");
+          const json = await res.json();
+          const body = el("ordersBody");
+          body.innerHTML = "";
+          // json.bids and json.asks are maps keyed by price string
+          const rows = [];
+          if (json.bids) {
+            Object.entries(json.bids).forEach(([price, orders]) => {
+              orders.forEach((o) =>
+                rows.push({ price, side: "Buy", order: o }),
+              );
+            });
+          }
+          if (json.asks) {
+            Object.entries(json.asks).forEach(([price, orders]) => {
+              orders.forEach((o) =>
+                rows.push({ price, side: "Sell", order: o }),
+              );
+            });
+          }
+          if (rows.length === 0) {
+            body.innerHTML =
+              '<tr><td colspan="6" class="muted">No orders</td></tr>';
+            el("ordersCard").style.display = "block";
+            return;
+          }
+          // sort rows by price desc for bids then asc for asks (grouped)
+          rows.sort((a, b) => {
+            if (a.side === b.side) return Number(b.price) - Number(a.price);
+            return a.side === "Buy" ? -1 : 1;
+          });
+          rows.forEach((r) => {
+            const o = r.order;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${r.price}</td><td>${r.side}</td><td>${o.order_id}</td><td>${o.user_id}</td><td>${o.qty}</td><td>${o.filled_quantity}</td>`;
+            body.appendChild(tr);
+          });
+          el("ordersCard").style.display = "block";
+        } catch (e) {
+          log("Orders fetch error: " + e.message);
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
  use std::sync::{Arc, Mutex};
 
 use actix_web::{web::Data, App, HttpServer};
-
+use actix_files::Files;
 use crate::{orderbook::Orderbook, routes::{cancel_order, create_order, get_depth}};
 pub mod routes;
 pub mod input;
@@ -17,6 +17,9 @@ async fn main() -> Result<(), std::io::Error> {
         .service(create_order)
         .service(cancel_order)
         .service(get_depth)
+              .service(crate::routes::get_orders)
+              // Serve static files from the `static/` directory. `index.html` will be used for `/`
+        .service(Files::new("/", "./static").index_file("index.html"))
     })
     .bind("127.0.0.1:8080")?
     .run()

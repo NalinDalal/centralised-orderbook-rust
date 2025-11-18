@@ -21,7 +21,7 @@ async fn main() -> Result<(), std::io::Error> {
               // Serve static files from the `static/` directory. `index.html` will be used for `/`
         .service(Files::new("/", "./static").index_file("index.html"))
     })
-    .bind("127.0.0.1:8080")?
+    .bind("127.0.0.1:8000")?
     .run()
     .await
 }
